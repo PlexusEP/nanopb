@@ -222,13 +222,26 @@ function(NANOPB_GENERATE_CPP)
 
       set(output "${GENERATOR_CORE_DIR}/${FIL_WE}_pb2.py")
       set(GENERATOR_CORE_PYTHON_SRC ${GENERATOR_CORE_PYTHON_SRC} ${output})
-      add_custom_command(
-        OUTPUT ${output}
-        COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
-        ARGS -I${GENERATOR_PATH}/proto
-          --python_out=${GENERATOR_CORE_DIR} ${ABS_FIL}
-        DEPENDS ${ABS_FIL}
-        VERBATIM)
+      if(DEFINED ENV{VIRTUAL_ENV})
+        # Leverage python venv
+        add_custom_command(
+          OUTPUT ${output}
+          COMMAND . $ENV{VIRTUAL_ENV}/bin/activate
+          COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS -I${GENERATOR_PATH}/proto
+            --python_out=${GENERATOR_CORE_DIR} ${ABS_FIL}
+          COMMAND deactivate
+          DEPENDS ${ABS_FIL}
+          VERBATIM)
+      else()
+        add_custom_command(
+          OUTPUT ${output}
+          COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS -I${GENERATOR_PATH}/proto
+            --python_out=${GENERATOR_CORE_DIR} ${ABS_FIL}
+          DEPENDS ${ABS_FIL}
+          VERBATIM)
+      endif()
   endforeach()
 
   foreach(FIL ${NANOPB_GENERATE_CPP_UNPARSED_ARGUMENTS})
@@ -310,20 +323,40 @@ function(NANOPB_GENERATE_CPP)
       set(NANOPB_OPT_STRING "--nanopb_opt=${NANOPB_PLUGIN_OPTIONS}" "--nanopb_out=${NANOPB_OUT}")
     endif()
 
-    add_custom_command(
-      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.c"
-             "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.h"
-      COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS ${_nanopb_include_path} -I${GENERATOR_PATH}
-           -I${GENERATOR_CORE_DIR} -I${CMAKE_CURRENT_BINARY_DIR}
-           --plugin=protoc-gen-nanopb=${NANOPB_GENERATOR_PLUGIN}
-           ${NANOPB_OPT_STRING}
-           ${PROTOC_OPTIONS}
-           ${ABS_FIL}
-      DEPENDS ${ABS_FIL} ${GENERATOR_CORE_PYTHON_SRC}
-           ${ABS_OPT_FIL} ${NANOPB_DEPENDS}
-      COMMENT "Running C++ protocol buffer compiler using nanopb plugin on ${FIL}"
-      VERBATIM )
+    if(DEFINED ENV{VIRTUAL_ENV})
+      # Leverage python venv
+      add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.c"
+              "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.h"
+        COMMAND . $ENV{VIRTUAL_ENV}/bin/activate
+        COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
+        ARGS ${_nanopb_include_path} -I${GENERATOR_PATH}
+            -I${GENERATOR_CORE_DIR} -I${CMAKE_CURRENT_BINARY_DIR}
+            --plugin=protoc-gen-nanopb=${NANOPB_GENERATOR_PLUGIN}
+            ${NANOPB_OPT_STRING}
+            ${PROTOC_OPTIONS}
+            ${ABS_FIL}
+        COMMAND deactivate
+        DEPENDS ${ABS_FIL} ${GENERATOR_CORE_PYTHON_SRC}
+            ${ABS_OPT_FIL} ${NANOPB_DEPENDS}
+        COMMENT "Running C++ protocol buffer compiler using nanopb plugin on ${FIL}"
+        VERBATIM )
+    else()
+      add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.c"
+              "${CMAKE_CURRENT_BINARY_DIR}/${FIL_PATH_REL}/${FIL_WE}.pb.h"
+        COMMAND ${CUSTOM_COMMAND_PREFIX} ${PROTOBUF_PROTOC_EXECUTABLE}
+        ARGS ${_nanopb_include_path} -I${GENERATOR_PATH}
+            -I${GENERATOR_CORE_DIR} -I${CMAKE_CURRENT_BINARY_DIR}
+            --plugin=protoc-gen-nanopb=${NANOPB_GENERATOR_PLUGIN}
+            ${NANOPB_OPT_STRING}
+            ${PROTOC_OPTIONS}
+            ${ABS_FIL}
+        DEPENDS ${ABS_FIL} ${GENERATOR_CORE_PYTHON_SRC}
+            ${ABS_OPT_FIL} ${NANOPB_DEPENDS}
+        COMMENT "Running C++ protocol buffer compiler using nanopb plugin on ${FIL}"
+        VERBATIM )
+    endif()
 
   endforeach()
 
